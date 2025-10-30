@@ -60,6 +60,61 @@ app.delete("/usuario/:id", (req, res) => {
     }
   );
 });
+app.get("/productos", (req, res) => {
+  connection.query("SELECT * FROM productos", (err, results) => {
+    if (err) {
+      return res
+        .status(500)
+        .json({ message: "Error en el servidor", error: err });
+    }
+    res.json(results);
+  });
+});
+app.get("/producto/:id", (req, res) => {
+  const { id } = req.params;
+
+  connection.query(
+    "SELECT * FROM Productos WHERE id_producto = ?",
+    [id],
+    (err, productoResults) => {
+      if (err)
+        return res
+          .status(500)
+          .json({ message: "Error en el servidor", error: err });
+      if (productoResults.length === 0)
+        return res.status(404).json({ message: "Producto no encontrado" });
+
+      const producto = productoResults[0];
+
+      connection.query(
+        "SELECT nombre, descripcion FROM especificaciones WHERE id_producto = ?",
+        [id],
+        (err, especResults) => {
+          if (err)
+            return res
+              .status(500)
+              .json({ message: "Error al traer especificaciones", error: err });
+
+          connection.query(
+            "SELECT valoracion, descripcion FROM Resenas WHERE id_producto = ?",
+            [id],
+            (err, resenaResults) => {
+              if (err)
+                return res
+                  .status(500)
+                  .json({ message: "Error al traer reseñas", error: err });
+
+              producto.especificaciones = especResults;
+              producto.resenas = resenaResults;
+
+              res.json(producto);
+            }
+          );
+        }
+      );
+    }
+  );
+});
 
 app.post("/productos", (req, res) => {
   const {
