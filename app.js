@@ -46,39 +46,44 @@ app.get("/usuarios/:id", async (req, res) => {
   }
 });
 
+// Middleware para validar correo
 const validarCorreo = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const [results] = await pool.query(
-      "SELECT * FROM usuarios WHERE email = ?",
-      [email]
-    );
+    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [
+      email,
+    ]);
 
-    if (results.length === 0) {
-      return res.status(400).send("Correo o contraseña incorrecta");
+    if (rows.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Correo o contraseña incorrecta" });
     }
 
-    req.usuario = results[0]; // Guardamos usuario para el siguiente middleware
+    req.usuario = rows[0]; // Guardamos el usuario
     next();
   } catch (err) {
-    res.status(500).json({ message: "Error en la base de datos", error: err });
+    console.error("Error en validarCorreo:", err);
+    return res.status(500).json({ message: "Error en la base de datos" });
   }
 };
 
+// Middleware para validar contraseña
 const validarPassword = async (req, res, next) => {
   try {
     const { password } = req.body;
     const usuario = req.usuario;
 
     if (password !== usuario.password) {
-      return res.status(400).send("Correo o contraseña incorrecta");
+      return res
+        .status(400)
+        .json({ message: "Correo o contraseña incorrecta" });
     }
 
     next();
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "Error en la validación de contraseña", error: err });
+    console.error("Error en validarPassword:", err);
+    return res.status(500).json({ message: "Error en la base de datos" });
   }
 };
 
