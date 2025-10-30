@@ -46,6 +46,49 @@ app.get("/usuarios/:id", async (req, res) => {
   }
 });
 
+const validarCorreo = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const [results] = await pool.query(
+      "SELECT * FROM usuarios WHERE email = ?",
+      [email]
+    );
+
+    if (results.length === 0) {
+      return res.status(400).send("Correo o contraseña incorrecta");
+    }
+
+    req.usuario = results[0]; // Guardamos usuario para el siguiente middleware
+    next();
+  } catch (err) {
+    res.status(500).json({ message: "Error en la base de datos", error: err });
+  }
+};
+
+const validarPassword = async (req, res, next) => {
+  try {
+    const { password } = req.body;
+    const usuario = req.usuario;
+
+    if (password !== usuario.password) {
+      return res.status(400).send("Correo o contraseña incorrecta");
+    }
+
+    next();
+  } catch (err) {
+    res
+      .status(500)
+      .json({ message: "Error en la validación de contraseña", error: err });
+  }
+};
+
+app.post("/login", validarCorreo, validarPassword, (req, res) => {
+  res.json({
+    message: "Usuario logeado correctamente",
+    usuario: req.usuario.id_usuario,
+  });
+});
+
 // Crear usuario
 app.post("/usuarios", async (req, res) => {
   try {
@@ -320,7 +363,6 @@ app.get("/detallePedidos/:id_pedido", async (req, res) => {
         precio_unitario: d.precio,
         subtotal: d.precio * d.cantidad,
         imagen: d.imagen,
-      
       })),
     });
   } catch (err) {
