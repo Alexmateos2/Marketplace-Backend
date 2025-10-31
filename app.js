@@ -2,7 +2,27 @@
 const express = require("express");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
-
+const multer = require("multer");
+const cloudinary = require("cloudinary").v2;
+require("dotenv").config();
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) {
+      cb(null, true);
+    } else {
+      cb(new Error("Solo se permiten imágenes"), false);
+    }
+  },
+});
 const app = express();
 const PORT = 3000;
 
@@ -19,6 +39,95 @@ const pool = mysql.createPool({
 
 app.use(cors());
 app.use(express.json());
+app.post("/test-upload", upload.single("imagen"), async (req, res) => {
+  try {
+    console.log("📤 Iniciando subida de imagen...");
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: "No se proporcionó ninguna imagen",
+      });
+    }
+
+    console.log("📁 Archivo recibido:", {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    });
+
+    // Subir a Cloudinary
+    const uploadPromise = new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            resource_type: "image",
+            folder: "test-marketplace", // Carpeta de prueba
+            public_id: `test_producto_${Date.now()}`,
+            transformation: [{ quality: "auto" }, { format: "auto" }],
+          },
+          (error, result) => {
+            if (error) {
+              console.error("❌ Error en Cloudinary:", error);
+              reject(error);
+            } else {
+              console.log("✅ Imagen subida exitosamente:", result.public_id);
+              resolve(result);
+            }
+          }
+        )
+        .end(req.file.buffer);
+    });
+
+    const result = await uploadPromise;
+
+    // Generar URLs de diferentes tamaños para prueba
+    const imageUrls = {
+      original: result.secure_url,
+      thumbnail: cloudinary.url(result.public_id, {
+        width: 150,
+        height: 150,
+        crop: "fill",
+        quality: "auto",
+      }),
+      medium: cloudinary.url(result.public_id, {
+        width: 400,
+        height: 400,
+        crop: "fill",
+        quality: "auto",
+      }),
+      large: cloudinary.url(result.public_id, {
+        width: 800,
+        height: 600,
+        crop: "fill",
+        quality: "auto",
+      }),
+    };
+
+    res.json({
+      success: true,
+      message:
+        "Imagen subida exitosamente. El flujo de MediaFlows procesará la imagen automáticamente.",
+      data: {
+        public_id: result.public_id,
+        secure_url: result.secure_url,
+        folder: result.folder,
+        format: result.format,
+        width: result.width,
+        height: result.height,
+        bytes: result.bytes,
+        urls: imageUrls,
+      },
+    });
+  } catch (error) {
+    console.error("❌ Error general:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error al subir la imagen",
+      details: error.message,
+    });
+  }
+});
 
 // Obtener todos los usuarios
 app.get("/usuarios", async (req, res) => {
@@ -328,7 +437,7 @@ app.get("/pedidos/:id_usuario", async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos", error: err });
   }
 });
-app.get("/detallePedidos/:id_pedido", async (req, res) => {
+app.get("/detallesPedidos/:id_pedido", async (req, res) => {
   try {
     const { id_pedido } = req.params;
 
