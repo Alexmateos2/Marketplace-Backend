@@ -307,47 +307,137 @@ app.post("/productos", async (req, res) => {
     especificaciones,
     resena,
   } = req.body;
+
+  // Validaciones básicas
+  if (!nombre || !id_categoria || precio === undefined || stock === undefined) {
+    return res.status(400).json({
+      message: "Faltan campos requeridos",
+      campos_requeridos: ["nombre", "id_categoria", "precio", "stock"],
+    });
+  }
+
+  // Validar tipos y rangos
+  if (typeof nombre !== "string" || nombre.trim().length === 0) {
+    return res
+      .status(400)
+      .json({ message: "El nombre debe ser un texto no vacío" });
+  }
+
+  if (isNaN(precio) || precio < 0) {
+    return res
+      .status(400)
+      .json({ message: "El precio debe ser un número positivo" });
+  }
+
+  if (isNaN(stock) || stock < 0 || !Number.isInteger(+stock)) {
+    return res
+      .status(400)
+      .json({ message: "El stock debe ser un número entero positivo" });
+  }
+
+  if (isNaN(id_categoria) || id_categoria <= 0) {
+    return res
+      .status(400)
+      .json({ message: "id_categoria debe ser un número válido" });
+  }
+
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
 
+    // Verificar que la categoría existe
+    const [categoria] = await connection.query(
+      "SELECT id_categoria FROM categoria WHERE id_categoria = ?",
+      [id_categoria]
+    );
+
+    if (categoria.length === 0) {
+      await connection.rollback();
+      return res
+        .status(404)
+        .json({ message: "La categoría especificada no existe" });
+    }
+
+    // Insertar producto
     const [productoResult] = await connection.query(
       "INSERT INTO Productos (nombre, id_categoria, precio, stock, oferta, imagen) VALUES (?, ?, ?, ?, ?, ?)",
-      [nombre, id_categoria, precio, stock, oferta, imagen]
+      [
+        nombre.trim(),
+        id_categoria,
+        precio,
+        stock,
+        oferta || false,
+        imagen || null,
+      ]
     );
 
     const idProducto = productoResult.insertId;
 
+    // Insertar especificaciones si existen
     if (Array.isArray(especificaciones) && especificaciones.length > 0) {
-      for (const spec of especificaciones) {
+      const especificacionesValidas = especificaciones.filter(
+        (spec) => spec.nombre && spec.descripcion
+      );
+
+      for (const spec of especificacionesValidas) {
         await connection.query(
           "INSERT INTO especificaciones (nombre, descripcion, id_producto) VALUES (?, ?, ?)",
-          [spec.nombre, spec.descripcion, idProducto]
+          [spec.nombre.trim(), spec.descripcion.trim(), idProducto]
         );
       }
     }
 
-    if (resena) {
+    // Insertar reseña si existe
+    if (resena && resena.valoracion && resena.descripcion) {
+      if (
+        isNaN(resena.valoracion) ||
+        resena.valoracion < 1 ||
+        resena.valoracion > 10
+      ) {
+        await connection.rollback();
+        return res
+          .status(400)
+          .json({ message: "La valoración debe estar entre 1 y 5" });
+      }
+
       await connection.query(
         "INSERT INTO Resenas (id_producto, valoracion, descripcion) VALUES (?, ?, ?)",
-        [idProducto, resena.valoracion, resena.descripcion]
+        [idProducto, resena.valoracion, resena.descripcion.trim()]
       );
     }
 
     await connection.commit();
 
-    res
-      .status(201)
-      .json({ message: "Producto creado con éxito", id_producto: idProducto });
+    res.status(201).json({
+      message: "Producto creado con éxito",
+      id_producto: idProducto,
+      producto: {
+        id: idProducto,
+        nombre: nombre.trim(),
+        id_categoria,
+        precio,
+        stock,
+      },
+    });
   } catch (err) {
     await connection.rollback();
-    res.status(500).json({ message: "Error al crear producto", error: err });
+    console.error("Error al crear producto:", err);
+
+    // Manejo de errores específicos
+    if (err.code === "ER_DUP_ENTRY") {
+      return res.status(409).json({ message: "El producto ya existe" });
+    }
+
+    res.status(500).json({
+      message: "Error al crear producto",
+      error:
+        process.env.NODE_ENV === "development" ? err.message : "Error interno",
+    });
   } finally {
     connection.release();
   }
 });
-
 // Últimos 12 productos
 app.get("/productos-nuevos", async (req, res) => {
   try {
