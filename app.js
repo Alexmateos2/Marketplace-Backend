@@ -271,7 +271,6 @@ app.get("/productos/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-   
     const [productoRows] = await pool.query(
       "SELECT * FROM Productos WHERE id_producto = ?",
       [id]
@@ -280,7 +279,6 @@ app.get("/productos/:id", async (req, res) => {
       return res.status(404).json({ message: "Producto no encontrado" });
 
     const producto = productoRows[0];
-
 
     const [especRows] = await pool.query(
       "SELECT nombre, descripcion FROM Especificaciones WHERE id_producto = ?",
@@ -293,7 +291,6 @@ app.get("/productos/:id", async (req, res) => {
     );
     const categoria = categoriaRows.length ? categoriaRows[0].nombre : null;
 
-   
     const [resenaRows] = await pool.query(
       "SELECT valoracion, descripcion FROM Resenas WHERE id_producto = ?",
       [id]
@@ -311,7 +308,6 @@ app.get("/productos/:id", async (req, res) => {
   }
 });
 
-
 // Crear producto con especificaciones y reseña
 app.post("/productos", async (req, res) => {
   const {
@@ -327,10 +323,22 @@ app.post("/productos", async (req, res) => {
   } = req.body;
 
   // Validaciones básicas
-  if (!nombre || !id_categoria || precio === undefined || stock === undefined || !descripcion) {
+  if (
+    !nombre ||
+    !id_categoria ||
+    precio === undefined ||
+    stock === undefined ||
+    !descripcion
+  ) {
     return res.status(400).json({
       message: "Faltan campos requeridos",
-      campos_requeridos: ["nombre", "id_categoria", "precio", "stock","descripcion"],
+      campos_requeridos: [
+        "nombre",
+        "id_categoria",
+        "precio",
+        "stock",
+        "descripcion",
+      ],
     });
   }
 
@@ -409,11 +417,8 @@ app.post("/productos", async (req, res) => {
 
     // Insertar reseña si existe
     if (resena && resena.valoracion && resena.descripcion) {
-      if (
-        isNaN(resena.valoracion) ||
-        resena.valoracion < 1 ||
-        resena.valoracion > 10
-      ) {
+      const valoracion = parseFloat(resena.valoracion);
+      if (isNaN(valoracion) || valoracion < 1 || valoracion > 10) {
         await connection.rollback();
         return res
           .status(400)
@@ -422,7 +427,7 @@ app.post("/productos", async (req, res) => {
 
       await connection.query(
         "INSERT INTO Resenas (id_producto, valoracion, descripcion) VALUES (?, ?, ?)",
-        [idProducto, resena.valoracion, resena.descripcion.trim()]
+        [idProducto, valoracion, resena.descripcion.trim()]
       );
     }
 
