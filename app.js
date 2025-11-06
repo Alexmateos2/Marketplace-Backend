@@ -267,6 +267,7 @@ app.get("/productos/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
+   
     const [productoRows] = await pool.query(
       "SELECT * FROM Productos WHERE id_producto = ?",
       [id]
@@ -276,29 +277,42 @@ app.get("/productos/:id", async (req, res) => {
 
     const producto = productoRows[0];
 
+
     const [especRows] = await pool.query(
-      "SELECT nombre, descripcion FROM especificaciones WHERE id_producto = ?",
+      "SELECT nombre, descripcion FROM Especificaciones WHERE id_producto = ?",
       [id]
     );
 
+    const [categoriaRows] = await pool.query(
+      "SELECT nombre FROM Categoria WHERE id_categoria = ?",
+      [producto.id_categoria]
+    );
+    const categoria = categoriaRows.length ? categoriaRows[0].nombre : null;
+
+   
     const [resenaRows] = await pool.query(
       "SELECT valoracion, descripcion FROM Resenas WHERE id_producto = ?",
       [id]
     );
 
+    // Agregar datos adicionales al producto
+    producto.categoria = categoria;
     producto.especificaciones = especRows;
     producto.resenas = resenaRows;
 
     res.json(producto);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: "Error al obtener producto", error: err });
   }
 });
+
 
 // Crear producto con especificaciones y reseña
 app.post("/productos", async (req, res) => {
   const {
     nombre,
+    descripcion,
     id_categoria,
     precio,
     stock,
@@ -309,10 +323,10 @@ app.post("/productos", async (req, res) => {
   } = req.body;
 
   // Validaciones básicas
-  if (!nombre || !id_categoria || precio === undefined || stock === undefined) {
+  if (!nombre || !id_categoria || precio === undefined || stock === undefined || !descripcion) {
     return res.status(400).json({
       message: "Faltan campos requeridos",
-      campos_requeridos: ["nombre", "id_categoria", "precio", "stock"],
+      campos_requeridos: ["nombre", "id_categoria", "precio", "stock","descripcion"],
     });
   }
 
@@ -361,9 +375,10 @@ app.post("/productos", async (req, res) => {
 
     // Insertar producto
     const [productoResult] = await connection.query(
-      "INSERT INTO Productos (nombre, id_categoria, precio, stock, oferta, imagen) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO Productos (nombre, descripcion, id_categoria, precio, stock, oferta, imagen) VALUES (?, ?, ?, ?, ?, ?, ?)",
       [
         nombre.trim(),
+        descripcion,
         id_categoria,
         precio,
         stock,
