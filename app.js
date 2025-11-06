@@ -241,7 +241,11 @@ app.delete("/usuarios/:id", async (req, res) => {
 // Obtener todos los productos
 app.get("/productos", async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM productos");
+    const [rows] = await pool.query(`
+      SELECT p.*, c.nombre AS categoria
+      FROM productos p
+      JOIN categoria c ON p.id_categoria = c.id_categoria
+    `);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ message: "Error al obtener productos", error: err });
@@ -413,7 +417,7 @@ app.post("/productos", async (req, res) => {
         await connection.rollback();
         return res
           .status(400)
-          .json({ message: "La valoración debe estar entre 1 y 5" });
+          .json({ message: "La valoración debe estar entre 1 y 10" });
       }
 
       await connection.query(
