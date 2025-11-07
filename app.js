@@ -551,13 +551,16 @@ app.get("/pedidos/:id_usuario", async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos", error: err });
   }
 });
-app.get("/detallesPedidos/:id_pedido", async (req, res) => {
+app.get("/detallesPedidos/:id_usuario/:id_pedido", async (req, res) => {
   try {
-    const { id_pedido } = req.params;
+    const { id_usuario, id_pedido } = req.params;
 
     const [detalles] = await pool.query(
       `
       SELECT 
+        u.nombre,
+        u.direccion,
+        u.telefono,
         pd.id_detalle,
         pd.id_pedido,
         pd.id_producto,
@@ -565,13 +568,15 @@ app.get("/detallesPedidos/:id_pedido", async (req, res) => {
         p.nombre AS nombre_producto,
         p.precio,
         p.imagen,
-        c.total
+        pe.fecha,
+        pe.total
       FROM pedidodetalle pd
       INNER JOIN productos p ON pd.id_producto = p.id_producto
-      LEFT JOIN pedido c ON pd.id_pedido = c.id_pedido
-      WHERE pd.id_pedido = ?
+      INNER JOIN pedido pe ON pd.id_pedido = pe.id_pedido
+      INNER JOIN usuarios u ON pe.id_usuario = u.id_usuario
+      WHERE pe.id_pedido = ? AND u.id_usuario = ?
       `,
-      [id_pedido]
+      [id_pedido, id_usuario]
     );
 
     if (detalles.length === 0) {
@@ -579,9 +584,12 @@ app.get("/detallesPedidos/:id_pedido", async (req, res) => {
         message: "No se encontraron detalles para este pedido",
       });
     }
-
     res.json({
       id_pedido,
+      nombre_usuario : detalles[0].nombre,
+      fecha: detalles[0].fecha,
+      direccion: detalles[0].direccion,
+      telefono: detalles[0].telefono,
       total: detalles[0].total,
       detalles: detalles.map((d) => ({
         id_detalle: d.id_detalle,
