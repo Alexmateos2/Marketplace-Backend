@@ -219,6 +219,36 @@ app.post("/usuarios", async (req, res) => {
     res.status(500).json({ message: "Error al crear usuario", error: err });
   }
 });
+app.patch("/usuarios/:id", async (req, res) => {
+  const userId = parseInt(req.params.id);
+  const cambios = req.body;
+
+  const campos = Object.keys(cambios);
+  if (campos.length === 0) {
+    return res
+      .status(400)
+      .json({ error: "No se enviaron campos para actualizar" });
+  }
+
+  const valores = campos.map((campo) => cambios[campo]);
+  const asignaciones = campos.map((campo) => `${campo} = ?`).join(", ");
+
+  const sql = `UPDATE usuarios SET ${asignaciones} WHERE id_usuario = ?`;
+  valores.push(userId);
+
+  try {
+    const [resultado] = await pool.query(sql, valores);
+
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado" });
+    }
+
+    res.json({ message: "Usuario actualizado correctamente" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error actualizando usuario" });
+  }
+});
 
 // Eliminar usuario
 app.delete("/usuarios/:id", async (req, res) => {
@@ -586,7 +616,7 @@ app.get("/detallesPedidos/:id_usuario/:id_pedido", async (req, res) => {
     }
     res.json({
       id_pedido,
-      nombre_usuario : detalles[0].nombre,
+      nombre_usuario: detalles[0].nombre,
       fecha: detalles[0].fecha,
       direccion: detalles[0].direccion,
       telefono: detalles[0].telefono,
