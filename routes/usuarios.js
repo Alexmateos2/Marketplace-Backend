@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const { validarCorreo, validarPassword } = require("../middlewares/auth");
+const { validarCorreo, validarPassword, correoExistente } = require("../middlewares/auth");
 const {
   login,
   crearUsuario,
@@ -9,9 +9,9 @@ const {
   actualizarUsuario,
   eliminarUsuario
 } = require("../controllers/usuariosController");
-
+ 
 router.post("/login", validarCorreo, validarPassword, login);
-router.post("/", crearUsuario);
+router.post("/", correoExistente,crearUsuario);
 router.get("/", getUsuarios);
 router.get("/:id", getUsuario);
 router.patch("/:id", actualizarUsuario);

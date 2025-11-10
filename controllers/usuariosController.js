@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-
+const bcrypt = require("bcrypt");
 //Login usuario
 const login = (req, res) => {
   res.json({
@@ -13,7 +13,7 @@ const crearUsuario = async (req, res) => {
   try {
     const { nombre, password, email, direccion, telefono, rol } = req.body;
     const rolFinal = rol ?? "usuario";
-
+    const hashedPassword = await bcrypt.hash(password, 10);
     if (!nombre || !email || !password || !direccion || !telefono)
       return res
         .status(400)
@@ -30,7 +30,7 @@ const crearUsuario = async (req, res) => {
 
     const [result] = await pool.query(
       "INSERT INTO usuarios (nombre, password, email, direccion, telefono, rol) VALUES (?, ?, ?, ?, ?, ?)",
-      [nombre, password, email, direccion, telefono, rolFinal]
+      [nombre, hashedPassword, email, direccion, telefono, rolFinal]
     );
 
     res.status(201).json({
@@ -78,7 +78,7 @@ const getUsuario = async (req, res) => {
 //Actualizar datos de un usuario
 const actualizarUsuario = async (req, res) => {
   const userId = parseInt(req.params.id);
-  const cambios = req.body;
+  const cambios = { ...req.body };
   const campos = Object.keys(cambios);
 
   if (!campos.length)
@@ -86,17 +86,24 @@ const actualizarUsuario = async (req, res) => {
       .status(400)
       .json({ error: "No se enviaron campos para actualizar" });
 
-  const valores = campos.map((campo) => cambios[campo]);
-  const asignaciones = campos.map((campo) => `${campo} = ?`).join(", ");
-  valores.push(userId);
-
   try {
+    // Si viene password, hashearlo
+    if (cambios.password) {
+      cambios.password = await bcrypt.hash(cambios.password, 10);
+    }
+
+    const valores = campos.map((campo) => cambios[campo]);
+    const asignaciones = campos.map((campo) => `${campo} = ?`).join(", ");
+    valores.push(userId);
+
     const [resultado] = await pool.query(
       `UPDATE usuarios SET ${asignaciones} WHERE id_usuario = ?`,
       valores
     );
+
     if (resultado.affectedRows === 0)
       return res.status(404).json({ error: "Usuario no encontrado" });
+
     res.json({ message: "Usuario actualizado correctamente" });
   } catch (err) {
     res
