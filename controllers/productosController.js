@@ -1,0 +1,165 @@
+const pool = require("../config/db");
+
+// Obtener todos los productos con su categoría
+const getProductos = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT p.*, c.nombre AS categoria
+      FROM productos p
+      JOIN categoria c ON p.id_categoria = c.id_categoria
+    `);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener productos", error: err.message });
+  }
+};
+
+// Obtener productos por categoría
+const getProductosPorCategoria = async (req, res) => {
+  try {
+    const { id_categoria } = req.params;
+    const [rows] = await pool.query(
+      "SELECT * FROM productos WHERE id_categoria = ?",
+      [id_categoria]
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener productos por categoría", error: err.message });
+  }
+};
+
+// Obtener producto por ID con especificaciones y reseñas
+const getProducto = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [productoRows] = await pool.query(
+      "SELECT * FROM Productos WHERE id_producto = ?",
+      [id]
+    );
+
+    if (!productoRows.length) return res.status(404).json({ message: "Producto no encontrado" });
+
+    const producto = productoRows[0];
+
+    const [especRows] = await pool.query(
+      "SELECT nombre, descripcion FROM Especificaciones WHERE id_producto = ?",
+      [id]
+    );
+
+    const [categoriaRows] = await pool.query(
+      "SELECT nombre FROM Categoria WHERE id_categoria = ?",
+      [producto.id_categoria]
+    );
+
+    const categoria = categoriaRows.length ? categoriaRows[0].nombre : null;
+
+    const [resenaRows] = await pool.query(
+      "SELECT valoracion, descripcion FROM Resenas WHERE id_producto = ?",
+      [id]
+    );
+
+    producto.categoria = categoria;
+    producto.especificaciones = especRows;
+    producto.resenas = resenaRows;
+
+    res.json(producto);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener producto", error: err.message });
+  }
+};
+
+// Crear producto con especificaciones y reseña
+const crearProducto = async (req, res) => {
+  const {
+    nombre,
+    descripcion,
+    id_categoria,
+    precio,
+    stock,
+    oferta,
+    imagen,
+    especificaciones,
+    resena,
+  } = req.body;
+
+  if (!nombre || !id_categoria || precio === undefined || stock === undefined || !descripcion) {
+    return res.status(400).json({ message: "Faltan campos requeridos" });
+  }
+
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+
+    // Verificar categoría
+    const [categoria] = await connection.query(
+      "SELECT id_categoria FROM categoria WHERE id_categoria = ?",
+      [id_categoria]
+    );
+
+    if (!categoria.length) {
+      await connection.rollback();
+      return res.status(404).json({ message: "La categoría especificada no existe" });
+    }
+
+    // Insertar producto
+    const [productoResult] = await connection.query(
+      "INSERT INTO Productos (nombre, descripcion, id_categoria, precio, stock, oferta, imagen) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [nombre.trim(), descripcion, id_categoria, precio, stock, oferta || false, imagen || null]
+    );
+
+    const idProducto = productoResult.insertId;
+
+    // Insertar especificaciones
+    if (Array.isArray(especificaciones)) {
+      for (const spec of especificaciones.filter(s => s.nombre && s.descripcion)) {
+        await connection.query(
+          "INSERT INTO especificaciones (nombre, descripcion, id_producto) VALUES (?, ?, ?)",
+          [spec.nombre.trim(), spec.descripcion.trim(), idProducto]
+        );
+      }
+    }
+
+    // Insertar reseña
+    if (resena && resena.valoracion && resena.descripcion) {
+      const valoracion = parseFloat(resena.valoracion);
+      if (isNaN(valoracion) || valoracion < 1 || valoracion > 10) {
+        await connection.rollback();
+        return res.status(400).json({ message: "La valoración debe estar entre 1 y 10" });
+      }
+
+      await connection.query(
+        "INSERT INTO Resenas (id_producto, valoracion, descripcion) VALUES (?, ?, ?)",
+        [idProducto, valoracion, resena.descripcion.trim()]
+      );
+    }
+
+    await connection.commit();
+    res.status(201).json({ message: "Producto creado con éxito", id_producto: idProducto });
+  } catch (err) {
+    await connection.rollback();
+    res.status(500).json({ message: "Error al crear producto", error: err.message });
+  } finally {
+    connection.release();
+  }
+};
+
+// Últimos 12 productos
+const getProductosNuevos = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM Productos ORDER BY id_producto DESC LIMIT 12"
+    );
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener nuevos productos", error: err.message });
+  }
+};
+
+module.exports = {
+  getProductos,
+  getProductosPorCategoria,
+  getProducto,
+  crearProducto,
+  getProductosNuevos,
+};
