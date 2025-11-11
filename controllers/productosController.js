@@ -1,5 +1,5 @@
 const pool = require("../config/db");
-
+const cloudinary = require("cloudinary").v2;
 // Obtener todos los productos con su categoría
 const getProductos = async (req, res) => {
   try {
@@ -10,7 +10,9 @@ const getProductos = async (req, res) => {
     `);
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener productos", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error al obtener productos", error: err.message });
   }
 };
 
@@ -24,7 +26,10 @@ const getProductosPorCategoria = async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener productos por categoría", error: err.message });
+    res.status(500).json({
+      message: "Error al obtener productos por categoría",
+      error: err.message,
+    });
   }
 };
 
@@ -38,7 +43,8 @@ const getProducto = async (req, res) => {
       [id]
     );
 
-    if (!productoRows.length) return res.status(404).json({ message: "Producto no encontrado" });
+    if (!productoRows.length)
+      return res.status(404).json({ message: "Producto no encontrado" });
 
     const producto = productoRows[0];
 
@@ -65,7 +71,9 @@ const getProducto = async (req, res) => {
 
     res.json(producto);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener producto", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error al obtener producto", error: err.message });
   }
 };
 
@@ -83,7 +91,13 @@ const crearProducto = async (req, res) => {
     resena,
   } = req.body;
 
-  if (!nombre || !id_categoria || precio === undefined || stock === undefined || !descripcion) {
+  if (
+    !nombre ||
+    !id_categoria ||
+    precio === undefined ||
+    stock === undefined ||
+    !descripcion
+  ) {
     return res.status(400).json({ message: "Faltan campos requeridos" });
   }
 
@@ -99,20 +113,32 @@ const crearProducto = async (req, res) => {
 
     if (!categoria.length) {
       await connection.rollback();
-      return res.status(404).json({ message: "La categoría especificada no existe" });
+      return res
+        .status(404)
+        .json({ message: "La categoría especificada no existe" });
     }
 
     // Insertar producto
     const [productoResult] = await connection.query(
       "INSERT INTO Productos (nombre, descripcion, id_categoria, precio, stock, oferta, imagen) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [nombre.trim(), descripcion, id_categoria, precio, stock, oferta || false, imagen || null]
+      [
+        nombre.trim(),
+        descripcion,
+        id_categoria,
+        precio,
+        stock,
+        oferta || false,
+        imagen || null,
+      ]
     );
 
     const idProducto = productoResult.insertId;
 
     // Insertar especificaciones
     if (Array.isArray(especificaciones)) {
-      for (const spec of especificaciones.filter(s => s.nombre && s.descripcion)) {
+      for (const spec of especificaciones.filter(
+        (s) => s.nombre && s.descripcion
+      )) {
         await connection.query(
           "INSERT INTO especificaciones (nombre, descripcion, id_producto) VALUES (?, ?, ?)",
           [spec.nombre.trim(), spec.descripcion.trim(), idProducto]
@@ -125,7 +151,9 @@ const crearProducto = async (req, res) => {
       const valoracion = parseFloat(resena.valoracion);
       if (isNaN(valoracion) || valoracion < 1 || valoracion > 10) {
         await connection.rollback();
-        return res.status(400).json({ message: "La valoración debe estar entre 1 y 10" });
+        return res
+          .status(400)
+          .json({ message: "La valoración debe estar entre 1 y 10" });
       }
 
       await connection.query(
@@ -135,10 +163,14 @@ const crearProducto = async (req, res) => {
     }
 
     await connection.commit();
-    res.status(201).json({ message: "Producto creado con éxito", id_producto: idProducto });
+    res
+      .status(201)
+      .json({ message: "Producto creado con éxito", id_producto: idProducto });
   } catch (err) {
     await connection.rollback();
-    res.status(500).json({ message: "Error al crear producto", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Error al crear producto", error: err.message });
   } finally {
     connection.release();
   }
@@ -152,7 +184,65 @@ const getProductosNuevos = async (req, res) => {
     );
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener nuevos productos", error: err.message });
+    res.status(500).json({
+      message: "Error al obtener nuevos productos",
+      error: err.message,
+    });
+  }
+};
+const borrarProducto = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [productoRows] = await pool.query(
+      "SELECT imagen FROM productos WHERE id_producto = ?",
+      [id]
+    );
+
+    if (productoRows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    const imagen = productoRows[0].imagen;
+
+  
+    await pool.query("DELETE FROM resenas WHERE id_producto = ?", [id]);
+
+   
+    await pool.query("DELETE FROM especificaciones WHERE id_producto = ?", [
+      id,
+    ]);
+
+if (imagen) {
+
+
+  try {
+    const result = await cloudinary.uploader.destroy(imagen);
+
+  } catch (err) {
+    console.warn("Error eliminando imagen de Cloudinary:", err.message);
+  }
+}
+    // Eliminar producto principal
+    const [result] = await pool.query(
+      "DELETE FROM productos WHERE id_producto = ?",
+      [id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res
+        .status(404)
+        .json({ message: "No se pudo eliminar el producto" });
+    }
+
+  
+    res.json({ message: "Producto eliminado correctamente" });
+  } catch (err) {
+    console.error("Error al borrar el producto:", err);
+    res.status(500).json({
+      message: "Error al borrar el producto",
+      error: err.message,
+    });
   }
 };
 
@@ -162,4 +252,5 @@ module.exports = {
   getProducto,
   crearProducto,
   getProductosNuevos,
+  borrarProducto,
 };
