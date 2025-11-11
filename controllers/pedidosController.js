@@ -103,7 +103,9 @@ const getDetallesPedido = async (req, res) => {
     );
 
     if (!detalles.length)
-      return res.status(404).json({ message: "No se encontraron detalles para este pedido" });
+      return res
+        .status(404)
+        .json({ message: "No se encontraron detalles para este pedido" });
 
     res.json({
       id_pedido,
@@ -123,7 +125,12 @@ const getDetallesPedido = async (req, res) => {
       })),
     });
   } catch (err) {
-    res.status(500).json({ message: "Error al obtener detalles del pedido", error: err.message });
+    res
+      .status(500)
+      .json({
+        message: "Error al obtener detalles del pedido",
+        error: err.message,
+      });
   }
 };
 

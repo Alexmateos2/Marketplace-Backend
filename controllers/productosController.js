@@ -205,24 +205,19 @@ const borrarProducto = async (req, res) => {
 
     const imagen = productoRows[0].imagen;
 
-  
     await pool.query("DELETE FROM resenas WHERE id_producto = ?", [id]);
 
-   
     await pool.query("DELETE FROM especificaciones WHERE id_producto = ?", [
       id,
     ]);
 
-if (imagen) {
-
-
-  try {
-    const result = await cloudinary.uploader.destroy(imagen);
-
-  } catch (err) {
-    console.warn("Error eliminando imagen de Cloudinary:", err.message);
-  }
-}
+    if (imagen) {
+      try {
+        const result = await cloudinary.uploader.destroy(imagen);
+      } catch (err) {
+        console.warn("Error eliminando imagen de Cloudinary:", err.message);
+      }
+    }
     // Eliminar producto principal
     const [result] = await pool.query(
       "DELETE FROM productos WHERE id_producto = ?",
@@ -235,7 +230,6 @@ if (imagen) {
         .json({ message: "No se pudo eliminar el producto" });
     }
 
-  
     res.json({ message: "Producto eliminado correctamente" });
   } catch (err) {
     console.error("Error al borrar el producto:", err);
@@ -243,6 +237,106 @@ if (imagen) {
       message: "Error al borrar el producto",
       error: err.message,
     });
+  }
+};
+const actualizarProducto = async (req, res) => {
+  const { id } = req.params;
+  const {
+    nombre,
+    descripcion,
+    id_categoria,
+    precio,
+    stock,
+    oferta,
+    imagen,
+    especificaciones,
+    resenas,
+  } = req.body;
+
+  const connection = await pool.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    // Obtener la imagen actual
+    const [currentImageRow] = await connection.query(
+      `SELECT imagen FROM Productos WHERE id_producto = ?`,
+      [id]
+    );
+
+    const currentImage = currentImageRow.length
+      ? currentImageRow[0].imagen
+      : null;
+
+    // Si hay una nueva imagen y es distinta a la actual, borrar la vieja
+    if (imagen && currentImage && imagen !== currentImage) {
+      try {
+        await cloudinary.uploader.destroy(currentImage);
+        console.log(`🗑️ Imagen anterior eliminada: ${currentImage}`);
+      } catch (err) {
+        console.warn(
+          "⚠️ Error eliminando imagen anterior de Cloudinary:",
+          err.message
+        );
+      }
+    }
+
+    // Actualizar producto principal
+    await connection.query(
+      `UPDATE Productos 
+       SET nombre = ?, descripcion = ?, id_categoria = ?, precio = ?, stock = ?, oferta = ?, imagen = ?
+       WHERE id_producto = ?`,
+      [nombre, descripcion, id_categoria, precio, stock, oferta, imagen, id]
+    );
+
+    // 🔹 Especificaciones
+    await connection.query(
+      `DELETE FROM Especificaciones WHERE id_producto = ?`,
+      [id]
+    );
+
+    if (Array.isArray(especificaciones) && especificaciones.length > 0) {
+      const values = especificaciones.map((spec) => [
+        id,
+        spec.nombre,
+        spec.descripcion,
+      ]);
+      await connection.query(
+        `INSERT INTO Especificaciones (id_producto, nombre, descripcion) VALUES ?`,
+        [values]
+      );
+    }
+
+    // 🔹 Reseñas
+    await connection.query(`DELETE FROM Resenas WHERE id_producto = ?`, [id]);
+
+    if (Array.isArray(resenas) && resenas.length > 0) {
+      const values = resenas.map((rev) => [
+        id,
+        rev.valoracion,
+        rev.descripcion,
+      ]);
+      await connection.query(
+        `INSERT INTO Resenas (id_producto, valoracion, descripcion) VALUES ?`,
+        [values]
+      );
+    }
+
+    await connection.commit();
+
+    res.json({
+      message: "Producto actualizado correctamente",
+      id_producto: id,
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error(err);
+    res.status(500).json({
+      message: "Error al actualizar el producto",
+      error: err.message,
+    });
+  } finally {
+    connection.release();
   }
 };
 
@@ -253,4 +347,5 @@ module.exports = {
   crearProducto,
   getProductosNuevos,
   borrarProducto,
+  actualizarProducto,
 };
