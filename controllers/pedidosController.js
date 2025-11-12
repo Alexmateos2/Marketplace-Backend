@@ -74,6 +74,36 @@ const getPedidos = async (req, res) => {
     res.status(500).json({ message: "Error al obtener pedidos", error: err });
   }
 };
+const getAllPedidos = async (req, res) => {
+  try {
+ 
+    const [pedidos] = await pool.query(
+      "SELECT * FROM Pedido"
+    );
+
+    if (!pedidos.length) return res.json([]);
+
+    const usuarioIds = pedidos.map(p => p.id_usuario);
+
+  
+    const [usuarios] = await pool.query(
+      `SELECT id_usuario, nombre FROM usuarios WHERE id_usuario IN (?)`,
+      [usuarioIds]
+    );
+
+    const pedidosConDetalles = pedidos.map(pedido => {
+      const usuario = usuarios.find(u => u.id_usuario === pedido.id_usuario);
+      return {
+        ...pedido,
+        nombre_usuario: usuario ? usuario.nombre : null,
+      };
+    });
+
+    res.json(pedidosConDetalles);
+  } catch (err) {
+    res.status(500).json({ message: "Error al obtener pedidos", error: err });
+  }
+};
 
 // Obtener detalles de un pedido específico
 const getDetallesPedido = async (req, res) => {
@@ -134,4 +164,4 @@ const getDetallesPedido = async (req, res) => {
   }
 };
 
-module.exports = { crearPedido, getPedidos, getDetallesPedido };
+module.exports = { crearPedido, getPedidos, getDetallesPedido,getAllPedidos};

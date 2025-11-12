@@ -32,9 +32,11 @@ app.use(express.json());
 const usuariosRoutes = require("./routes/usuarios");
 const productosRoutes = require("./routes/productos");
 const pedidosRoutes = require("./routes/pedidos");
+const estadisticasRoutes = require("./routes/estadisticas");
 app.use("/usuarios", usuariosRoutes);
 app.use("/productos", productosRoutes);
 app.use("/pedidos",pedidosRoutes)
+app.use("/estadisticas",estadisticasRoutes)
 
 
 app.listen(PORT, () => {
