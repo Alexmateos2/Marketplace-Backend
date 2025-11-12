@@ -95,7 +95,7 @@ const getAllPedidos = async (req, res) => {
       const usuario = usuarios.find(u => u.id_usuario === pedido.id_usuario);
       return {
         ...pedido,
-        nombre_usuario: usuario ? usuario.nombre : null,
+        nombre: usuario ? usuario.nombre : null,
       };
     });
 
