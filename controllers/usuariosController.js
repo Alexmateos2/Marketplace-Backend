@@ -5,6 +5,7 @@ const login = (req, res) => {
   res.json({
     message: "Usuario logeado correctamente",
     usuario: req.usuario.id_usuario,
+    rol:req.usuario.rol
   });
 };
 
@@ -36,6 +37,7 @@ const crearUsuario = async (req, res) => {
     res.status(201).json({
       message: "Usuario creado correctamente",
       usuario: result.insertId,
+      rol: rolFinal
     });
   } catch (err) {
     console.error(err);
