@@ -175,7 +175,22 @@ const crearProducto = async (req, res) => {
     connection.release();
   }
 };
-
+const getMejoresProductos = async (req,res) =>{
+  try {
+    const [rows] = await pool.query(`
+  SELECT p.id_producto,p.nombre,p.imagen
+  FROM Productos p
+  LEFT JOIN Resenas r ON p.id_producto = r.id_producto
+  ORDER BY r.valoracion DESC
+  LIMIT 4
+`); res.json(rows);
+  } catch (err) {
+    res.status(500).json({
+      message: "Error al obtener nuevos productos",
+      error: err.message,
+    });
+  }
+};
 // Últimos 12 productos
 const getProductosNuevos = async (req, res) => {
   try {
@@ -275,7 +290,7 @@ const actualizarProducto = async (req, res) => {
         console.log(`🗑️ Imagen anterior eliminada: ${currentImage}`);
       } catch (err) {
         console.warn(
-          "⚠️ Error eliminando imagen anterior de Cloudinary:",
+          "Error eliminando imagen anterior de Cloudinary:",
           err.message
         );
       }
@@ -307,7 +322,7 @@ const actualizarProducto = async (req, res) => {
       );
     }
 
-    // 🔹 Reseñas
+    // Reseñas
     await connection.query(`DELETE FROM Resenas WHERE id_producto = ?`, [id]);
 
     if (Array.isArray(resenas) && resenas.length > 0) {
@@ -344,6 +359,7 @@ module.exports = {
   getProductos,
   getProductosPorCategoria,
   getProducto,
+  getMejoresProductos,
   crearProducto,
   getProductosNuevos,
   borrarProducto,
