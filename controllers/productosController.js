@@ -175,7 +175,7 @@ const crearProducto = async (req, res) => {
     connection.release();
   }
 };
-const getMejoresProductos = async (req,res) =>{
+const getMejoresProductos = async (req, res) => {
   try {
     const [rows] = await pool.query(`
   SELECT p.id_producto,p.nombre,p.imagen
@@ -183,7 +183,8 @@ const getMejoresProductos = async (req,res) =>{
   LEFT JOIN Resenas r ON p.id_producto = r.id_producto
   ORDER BY r.valoracion DESC
   LIMIT 4
-`); res.json(rows);
+`);
+    res.json(rows);
   } catch (err) {
     res.status(500).json({
       message: "Error al obtener nuevos productos",
@@ -205,9 +206,33 @@ const getProductosNuevos = async (req, res) => {
     });
   }
 };
-const borrarProducto = async (req, res) => {
+// Si el produto tiene pedidos realizados por usuarios realizamos un PATCH para desactivarlo, si no lo borramos directamente
+const eliminarProducto = async (req, res) => {
+  const { id } = req.params;
+
   try {
-    const { id } = req.params;
+    // Comprobar si está en algún pedido
+    const [rows] = await pool.query(
+      "SELECT COUNT(*) AS total FROM pedidodetalle WHERE id_producto = ?",
+      [id]
+    );
+
+    const tienePedidos = rows[0].total > 0;
+
+    if (tienePedidos) {
+      // Soft delete
+      await pool.query(
+        "UPDATE productos SET activo = 0 WHERE id_producto = ?",
+        [id]
+      );
+
+      return res.json({
+        message: "Producto desactivado (soft delete)",
+      });
+    }
+
+    // Si no tiene pedidos , eliminar completamente
+
 
     const [productoRows] = await pool.query(
       "SELECT imagen FROM productos WHERE id_producto = ?",
@@ -220,20 +245,22 @@ const borrarProducto = async (req, res) => {
 
     const imagen = productoRows[0].imagen;
 
+    // Borrar dependencias opcionales
     await pool.query("DELETE FROM resenas WHERE id_producto = ?", [id]);
-
     await pool.query("DELETE FROM especificaciones WHERE id_producto = ?", [
       id,
     ]);
 
+    // Borrar imagen en cloudinary
     if (imagen) {
       try {
-        const result = await cloudinary.uploader.destroy(imagen);
+        await cloudinary.uploader.destroy(imagen);
       } catch (err) {
         console.warn("Error eliminando imagen de Cloudinary:", err.message);
       }
     }
-    // Eliminar producto principal
+
+    // Borrar producto
     const [result] = await pool.query(
       "DELETE FROM productos WHERE id_producto = ?",
       [id]
@@ -247,13 +274,14 @@ const borrarProducto = async (req, res) => {
 
     res.json({ message: "Producto eliminado correctamente" });
   } catch (err) {
-    console.error("Error al borrar el producto:", err);
+    console.error("Error al procesar la eliminación:", err);
     res.status(500).json({
       message: "Error al borrar el producto",
       error: err.message,
     });
   }
 };
+
 const actualizarProducto = async (req, res) => {
   const { id } = req.params;
   const {
@@ -362,6 +390,7 @@ module.exports = {
   getMejoresProductos,
   crearProducto,
   getProductosNuevos,
-  borrarProducto,
+  eliminarProducto,
   actualizarProducto,
+  
 };
