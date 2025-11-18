@@ -14,6 +14,30 @@ const crearPedido = async (req, res) => {
   try {
     await connection.beginTransaction();
 
+    // Validar stock disponible para todos los productos
+    for (const producto of productos) {
+      const [result] = await connection.query(
+        "SELECT stock FROM Productos WHERE id_producto = ?",
+        [producto.id_producto]
+      );
+
+      if (result.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({
+          message: `Producto ${producto.id_producto} no encontrado`,
+        });
+      }
+
+      const stockActual = result[0].stock;
+      if (stockActual < producto.cantidad) {
+        await connection.rollback();
+        return res.status(400).json({
+          message: `Stock insuficiente para el producto ${producto.id_producto}. Disponible: ${stockActual}`,
+        });
+      }
+    }
+
+    // Crear el pedido
     const [pedidoResult] = await connection.query(
       "INSERT INTO Pedido (id_usuario, total) VALUES (?, ?)",
       [id_usuario ?? null, total]
@@ -21,11 +45,20 @@ const crearPedido = async (req, res) => {
 
     const id_pedido = pedidoResult.insertId;
 
+    // Insertar detalles del pedido
     const values = productos.map((p) => [id_pedido, p.id_producto, p.cantidad]);
     await connection.query(
       "INSERT INTO PedidoDetalle (id_pedido, id_producto, cantidad) VALUES ?",
       [values]
     );
+
+    // Actualizar stock de cada producto (restar la cantidad comprada)
+    for (const producto of productos) {
+      await connection.query(
+        "UPDATE Productos SET stock = stock - ? WHERE id_producto = ?",
+        [producto.cantidad, producto.id_producto]
+      );
+    }
 
     await connection.commit();
 
@@ -36,7 +69,8 @@ const crearPedido = async (req, res) => {
     });
   } catch (err) {
     await connection.rollback();
-    res.status(500).json({ message: "Error al crear pedido", error: err });
+    console.error("Error al crear pedido:", err);
+    res.status(500).json({ message: "Error al crear pedido", error: err.message });
   } finally {
     connection.release();
   }
