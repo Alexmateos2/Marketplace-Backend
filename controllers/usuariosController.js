@@ -5,7 +5,8 @@ const login = (req, res) => {
   res.json({
     message: "Usuario logeado correctamente",
     usuario: req.usuario.id_usuario,
-    rol:req.usuario.rol
+    rol:req.usuario.rol,
+    avatar:req.usuario.avatar
   });
 };
 
