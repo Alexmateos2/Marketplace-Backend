@@ -196,7 +196,7 @@ const getMejoresProductos = async (req, res) => {
 const getProductosNuevos = async (req, res) => {
   try {
     const [rows] = await pool.query(
-      "SELECT * FROM Productos ORDER BY id_producto DESC LIMIT 12"
+      "SELECT * FROM Productos WHERE activo = 1 ORDER BY id_producto DESC LIMIT 12;"
     );
     res.json(rows);
   } catch (err) {
@@ -232,7 +232,6 @@ const eliminarProducto = async (req, res) => {
     }
 
     // Si no tiene pedidos , eliminar completamente
-
 
     const [productoRows] = await pool.query(
       "SELECT imagen FROM productos WHERE id_producto = ?",
@@ -392,5 +391,4 @@ module.exports = {
   getProductosNuevos,
   eliminarProducto,
   actualizarProducto,
-  
 };
