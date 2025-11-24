@@ -331,7 +331,7 @@ const actualizarProducto = async (req, res) => {
       [nombre, descripcion, id_categoria, precio, stock, oferta, imagen, id]
     );
 
-    // 🔹 Especificaciones
+    // Especificaciones
     await connection.query(
       `DELETE FROM Especificaciones WHERE id_producto = ?`,
       [id]
