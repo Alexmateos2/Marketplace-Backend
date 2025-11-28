@@ -5,30 +5,16 @@ const login = (req, res) => {
   res.json({
     message: "Usuario logeado correctamente",
     usuario: req.usuario.id_usuario,
-    rol:req.usuario.rol,
-    avatar:req.usuario.avatar
+    rol: req.usuario.rol,
+    avatar: req.usuario.avatar,
   });
 };
 
 //Crear un usuario
 const crearUsuario = async (req, res) => {
   try {
-    const { nombre, password, email, direccion, telefono, rol } = req.body;
-    const rolFinal = rol ?? "usuario";
-    const hashedPassword = await bcrypt.hash(password, 10);
-    if (!nombre || !email || !password || !direccion || !telefono)
-      return res
-        .status(400)
-        .json({ message: "Todos los campos son obligatorios" });
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email))
-      return res.status(400).json({ message: "Email no válido" });
-
-    if (password.length < 6)
-      return res
-        .status(400)
-        .json({ message: "La contraseña debe tener al menos 6 caracteres" });
+    const { nombre, hashedPassword, email, direccion, telefono, rolFinal } =
+      req.userData;
 
     const [result] = await pool.query(
       "INSERT INTO usuarios (nombre, password, email, direccion, telefono, rol) VALUES (?, ?, ?, ?, ?, ?)",
@@ -38,13 +24,14 @@ const crearUsuario = async (req, res) => {
     res.status(201).json({
       message: "Usuario creado correctamente",
       usuario: result.insertId,
-      rol: rolFinal
+      rol: rolFinal,
     });
   } catch (err) {
     console.error(err);
-    res
-      .status(500)
-      .json({ message: "Error al crear usuario", error: err.message });
+    res.status(500).json({
+      message: "Error al crear usuario",
+      error: err.message,
+    });
   }
 };
 
