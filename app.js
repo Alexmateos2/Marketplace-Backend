@@ -1,9 +1,11 @@
-// app.js
 const express = require("express");
+const swaggerDocs = require("./config/swagger");
+const swaggerUi = require('swagger-ui-express');
 const mysql = require("mysql2/promise");
 const cors = require("cors");
 const multer = require("multer");
 const cloudinary = require("cloudinary").v2;
+const { swaggerAuth } = require('./middlewares/auth');
 require("dotenv").config();
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -37,6 +39,11 @@ app.use("/usuarios", usuariosRoutes);
 app.use("/productos", productosRoutes);
 app.use("/pedidos",pedidosRoutes)
 app.use("/estadisticas",estadisticasRoutes)
+
+
+
+
+swaggerDocs(app, swaggerAuth);
 
 
 app.listen(PORT, () => {

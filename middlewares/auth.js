@@ -175,11 +175,35 @@ const validarActualizarUsuario = async (req, res, next) => {
       .json({ message: "Error en la validación de actualización", error: err.message });
   }
 };
+//Auth para la documentacion de swagger
+function swaggerAuth(req, res, next) {
+  const authHeader = req.headers['authorization'];
 
+  if (!authHeader) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Acceso restringido"');
+    return res.status(401).send('Autenticación requerida.');
+  }
+
+  const base64Credentials = authHeader.split(' ')[1];
+  const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
+  const [username, password] = credentials.split(':');
+
+  
+  const USERNAME = process.env.SWAGGER_USER || 'admin';
+  const PASSWORD = process.env.SWAGGER_PASS || 'admin';
+
+  if (username === USERNAME && password === PASSWORD) {
+    next();
+  } else {
+    res.setHeader('WWW-Authenticate', 'Basic realm="Acceso restringido"');
+    return res.status(401).send('Usuario o contraseña incorrectos.');
+  }
+}
 module.exports = {
   validarCorreo,
   validarPassword,
   correoExistente,
   validarCrearUsuario,
-  validarActualizarUsuario
+  validarActualizarUsuario,
+  swaggerAuth
 };
