@@ -81,7 +81,7 @@ const getPedidos = async (req, res) => {
   try {
     const { id_usuario } = req.params;
     const [pedidos] = await pool.query(
-      "SELECT * FROM Pedido WHERE id_usuario = ?",
+      "SELECT * FROM Pedido WHERE id_usuario = ? ORDER BY fecha DESC",
       [id_usuario]
     );
 
