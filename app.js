@@ -28,7 +28,6 @@ const upload = multer({
 const app = express();
 const PORT = 3000;
 
-
 app.use(cors());
 app.use(express.json());
 const usuariosRoutes = require("./routes/usuarios");
