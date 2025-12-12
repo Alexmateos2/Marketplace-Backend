@@ -122,7 +122,7 @@ const getAllPedidos = async (req, res) => {
 
   
     const [usuarios] = await pool.query(
-      `SELECT id_usuario, nombre FROM usuarios WHERE id_usuario IN (?)`,
+      `SELECT id_usuario, nombre FROM Usuarios WHERE id_usuario IN (?)`,
       [usuarioIds]
     );
 
