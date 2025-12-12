@@ -3,7 +3,7 @@ const bcrypt = require("bcrypt");
 const validarCorreo = async (req, res, next) => {
   try {
     const { email } = req.body;
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [
+    const [rows] = await pool.query("SELECT * FROM Usuarios WHERE email = ?", [
       email,
     ]);
 
@@ -43,7 +43,7 @@ const correoExistente = async (req, res, next) => {
     const { email } = req.body; // Extraer email del body
     if (!email) return res.status(400).json({ message: "Se requiere email" });
 
-    const [rows] = await pool.query("SELECT * FROM usuarios WHERE email = ?", [
+    const [rows] = await pool.query("SELECT * FROM Usuarios WHERE email = ?", [
       email,
     ]);
 
@@ -147,7 +147,7 @@ const validarActualizarUsuario = async (req, res, next) => {
 
       // Validar si email ya existe en otro usuario
       const [rows] = await pool.query(
-        "SELECT * FROM usuarios WHERE email = ? AND id_usuario != ?",
+        "SELECT * FROM Usuarios WHERE email = ? AND id_usuario != ?",
         [email, req.params.id]
       );
       if (rows.length > 0) {
