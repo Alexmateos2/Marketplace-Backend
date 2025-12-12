@@ -17,7 +17,7 @@ const crearUsuario = async (req, res) => {
       req.userData;
 
     const [result] = await pool.query(
-      "INSERT INTO usuarios (nombre, password, email, direccion, telefono, rol) VALUES (?, ?, ?, ?, ?, ?)",
+      "INSERT INTO Usuarios (nombre, password, email, direccion, telefono, rol) VALUES (?, ?, ?, ?, ?, ?)",
       [nombre, hashedPassword, email, direccion, telefono, rolFinal]
     );
 
@@ -87,7 +87,7 @@ const actualizarUsuario = async (req, res) => {
     valores.push(userId);
 
     const [resultado] = await pool.query(
-      `UPDATE usuarios SET ${asignaciones} WHERE id_usuario = ?`,
+      `UPDATE Usuarios SET ${asignaciones} WHERE id_usuario = ?`,
       valores
     );
 

@@ -140,7 +140,7 @@ const crearProducto = async (req, res) => {
         (s) => s.nombre && s.descripcion
       )) {
         await connection.query(
-          "INSERT INTO especificaciones (nombre, descripcion, id_producto) VALUES (?, ?, ?)",
+          "INSERT INTO Especificaciones (nombre, descripcion, id_producto) VALUES (?, ?, ?)",
           [spec.nombre.trim(), spec.descripcion.trim(), idProducto]
         );
       }
@@ -213,7 +213,7 @@ const eliminarProducto = async (req, res) => {
   try {
     // Comprobar si está en algún pedido
     const [rows] = await pool.query(
-      "SELECT COUNT(*) AS total FROM pedidodetalle WHERE id_producto = ?",
+      "SELECT COUNT(*) AS total FROM PedidoDetalle WHERE id_producto = ?",
       [id]
     );
 
@@ -222,7 +222,7 @@ const eliminarProducto = async (req, res) => {
     if (tienePedidos) {
       // Soft delete
       await pool.query(
-        "UPDATE productos SET activo = 0 WHERE id_producto = ?",
+        "UPDATE Productos SET activo = 0 WHERE id_producto = ?",
         [id]
       );
 
