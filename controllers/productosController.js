@@ -5,7 +5,7 @@ const getProductos = async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.*, c.nombre AS categoria
-      FROM productos p
+      FROM Productos p
       JOIN categoria c ON p.id_categoria = c.id_categoria
     `);
     res.json(rows);
@@ -21,7 +21,7 @@ const getProductosPorCategoria = async (req, res) => {
   try {
     const { id_categoria } = req.params;
     const [rows] = await pool.query(
-      "SELECT * FROM productos WHERE id_categoria = ?",
+      "SELECT * FROM Productos WHERE id_categoria = ?",
       [id_categoria]
     );
     res.json(rows);
@@ -234,7 +234,7 @@ const eliminarProducto = async (req, res) => {
     // Si no tiene pedidos , eliminar completamente
 
     const [productoRows] = await pool.query(
-      "SELECT imagen FROM productos WHERE id_producto = ?",
+      "SELECT imagen FROM Productos WHERE id_producto = ?",
       [id]
     );
 
@@ -261,7 +261,7 @@ const eliminarProducto = async (req, res) => {
 
     // Borrar producto
     const [result] = await pool.query(
-      "DELETE FROM productos WHERE id_producto = ?",
+      "DELETE FROM Productos WHERE id_producto = ?",
       [id]
     );
 
