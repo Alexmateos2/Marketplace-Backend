@@ -130,7 +130,7 @@ const getResumenEstadisticas = async (req, res) => {
     // Obtener nombres de usuarios de los pedidos
     const usuarioIds = pedidos.map((p) => p.id_usuario);
     const [usuarios] = await pool.query(
-      "SELECT id_usuario, nombre FROM usuarios WHERE id_usuario IN (?)",
+      "SELECT id_usuario, nombre FROM Usuarios WHERE id_usuario IN (?)",
       [usuarioIds]
     );
 

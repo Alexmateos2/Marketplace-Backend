@@ -38,7 +38,7 @@ const crearUsuario = async (req, res) => {
 //Obtener todos los usuarios
 const getUsuarios = async (req, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM usuarios");
+    const [rows] = await pool.query("SELECT * FROM Usuarios");
     res.json(rows);
   } catch (err) {
     res
@@ -52,7 +52,7 @@ const getUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const [rows] = await pool.query(
-      "SELECT * FROM usuarios WHERE id_usuario = ?",
+      "SELECT * FROM Usuarios WHERE id_usuario = ?",
       [id]
     );
     if (!rows.length)
@@ -107,7 +107,7 @@ const eliminarUsuario = async (req, res) => {
   try {
     const { id } = req.params;
     const [result] = await pool.query(
-      "DELETE FROM usuarios WHERE id_usuario = ?",
+      "DELETE FROM Usuarios WHERE id_usuario = ?",
       [id]
     );
     if (!result.affectedRows)
